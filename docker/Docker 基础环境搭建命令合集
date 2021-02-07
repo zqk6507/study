@@ -1,0 +1,129 @@
+-- redis
+docker run -d --name redis --restart=always  -p 6379:6379 -v /home/docker/redis/conf/redis.conf:/etc/redis/redis.conf -v /home/docker/redis/data:/data redis redis-server /etc/redis/redis.conf --requirepass "Redis123" --appendonly yes
+
+-- rocketmq
+	--namesrv
+	docker run --name rmqnamesrv --restart=always -d -p 9876:9876 -v /home/docker/rocketmq/namesrv/logs:/home/rocketmq/logs -e "MAX_POSSIBLE_HEAP=100000000" rocketmqinc/rocketmq sh mqnamesrv
+
+
+	--broker
+	docker run --name rmqbroker --restart=always -d -p 10911:10911 -p 10909:10909 -v  /home/docker/rocketmq/broker/logs:/opt/rocketmq-4.4.0/logs -v  /home/docker/rocketmq/broker/store:/opt/rocketmq-4.4.0/store -v  /home/docker/rocketmq/broker/conf/broker.conf:/opt/rocketmq-4.4.0/conf/broker.conf -v /home/docker/rocketmq/broker/bin:/opt/rocketmq-4.4.0/bin --link rmqnamesrv:namesrv -e "NAMESRV_ADDR=namesrv:9876" rocketmqinc/rocketmq sh mqbroker -c /opt/rocketmq-4.4.0/conf/broker.conf
+
+
+	--rocketmq console
+	docker run -d --restart=always --name rocketmq-console-ng -v /home/docker/rocketmq/rocketmq-console-ng/logs:/root/logs  -e "JAVA_OPTS=-Drocketmq.namesrv.addr=10.188.181.100:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false" -p 8081:8080 -t styletang/rocketmq-console-ng
+
+--tomcat
+	-- eap
+	docker run -d --name alitomcat -p 8090:8080 -p 5555:5555 -v /home/docker/tomcat/bin:/usr/local/taobao-tomcat-7.0.59/bin -v /home/docker/tomcat/deploy:/usr/local/taobao-tomcat-7.0.59/deploy -v /home/docker/tomcat/logs:/usr/local/taobao-tomcat-7.0.59/logs -v /home/docker/tomcat/conf:/usr/local/taobao-tomcat-7.0.59/conf -v /home/docker/tomcat/webapps:/usr/local/taobao-tomcat-7.0.59/webapps -v /home/eap:/home/eap marketing/taobaotomcat
+
+	--JVM参数
+	-Xms4096m -Xmx4096m -DCC.pubCountMax=2000 -Xdebug -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5555 
+
+	-- ebusiness 电商网站
+	docker run -d --name ebusiness -p 8070:8080 -p 7777:5555 -v /home/docker/ebusiness/bin:/usr/local/taobao-tomcat-7.0.59/bin -v /home/docker/ebusiness/deploy:/usr/local/taobao-tomcat-7.0.59/deploy -v /home/docker/ebusiness/logs:/usr/local/taobao-tomcat-7.0.59/logs -v /home/docker/ebusiness/conf:/usr/local/taobao-tomcat-7.0.59/conf -v /home/docker/ebusiness/webapps:/usr/local/taobao-tomcat-7.0.59/webapps marketing/taobaotomcat
+
+	-- proxy eap_proxy
+	docker run -d --name proxy -p 8060:8080 -p 6666:5555 -v /home/docker/proxy/bin:/usr/local/taobao-tomcat-7.0.59/bin -v /home/docker/proxy/deploy:/usr/local/taobao-tomcat-7.0.59/deploy -v /home/docker/proxy/logs:/usr/local/taobao-tomcat-7.0.59/logs -v /home/docker/proxy/conf:/usr/local/taobao-tomcat-7.0.59/conf -v /home/docker/proxy/webapps:/usr/local/taobao-tomcat-7.0.59/webapps marketing/taobaotomcat
+
+-- mongodb 
+	docker run -itd --name mongo -p 27017:27017 -v /home/docker/mongo/configdb:/data/configdb/ -v /home/docker/mongo/db/:/data/db/ -v /home/docker/mongo/mongod.conf.orig:/etc/mongod.conf.orig mongo:3.6.5
+
+	# 创建一个名为 admin，密码为 123456 的用户。
+	> use admin;
+	>  db.createUser({ user:'root',pwd:'Admin123',roles:[ { role:'userAdminAnyDatabase', db: 'admin'},"readWriteAnyDatabase"]});
+	# 尝试使用上面创建的用户信息进行连接。
+	> db.auth('root', 'Admin123')
+
+	-- 创建testdb数据库
+	use testdb;
+	--应该创建dbOwner的用户，然后用这个子账号登陆访问mongodb的testdb
+	db.createUser({user:"root",pwd:"Admin123",roles:[{role:"dbOwner",db:"testdb"}]})
+
+	====================================================================================
+	-- 解决报错 提示：mongodb no geo index for geoNear
+	-- 原因：你指定的field的index不是坐标
+	-- 创建索引
+	> db.uc_cst_customer.createIndex({loc:"2dsphere"})
+	====================================================================================
+
+	--mongo 导入导出参考： https://blog.csdn.net/wangmx1993328/article/details/82663617
+
+--edas-lite-configcenter 注册中心
+docker run -d --name edas-config-center --restart=always -p 8080:8080 -v /home/docker/edas-lite-configcenter/conf:/opt/edas-config-center/conf -v /home/docker/edas-lite-configcenter/logs:/opt/edas-config-center/logs soiff/edas-config-center
+
+
+-- nginx
+docker run --name nginx -d -p 80:80 -v /home/docker/nginx/log:/var/log/nginx -v /home/docker/nginx/nginx.conf:/etc/nginx/nginx.conf -v /home/docker/nginx/conf.d:/etc/nginx/conf.d -v /home/docker/nginx/html:/usr/share/nginx/html nginx
+
+
+
+docker build -t marketing/edas-lite-configcenter:1.0 .
+
+-- 进入容器
+docker exec -it [容器id] /bin/bash
+
+
+--eap配置文件修改
+
+-- catalina.sh配置开启远程调试模式 自行修改远程调试开放端口
+CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5555"
+JAVA_OPST 相关配置 -Daddress.server.domain=10.188.181.100 -Daddress.server.port=8080
+JAVA_OPTS="$JAVA_OPTS -Daddress.server.domain=10.188.181.100 -Daddress.server.port=8080 -DCC.pubCountMax=2000"
+
+
+-- 修改数据库需要注意除了wdk.properties中还有drds_server.properties
+com/longj/eap/platform/module/report/mount/conf/drds_server.properties
+
+
+-- apaas/edas-centos-openjdk8-alitomcat8 阿里官方镜像
+docker run -d --name aliedastomcat -p 8050:8080  apaas/edas-centos-openjdk8-alitomcat8
+
+
+docker run -it --name aliedastomcat -p 8050:8080  apaas/edas-centos-openjdk8-alitomcat8
+
+
+docker run -it --name proxy2 -p 8040:8080  marketing/proxy
+
+
+
+/Users/zhengqiku/workproject/yongyou/eap/eap/app/WEB-INF/lib
+
+
+
+-- 电商网站需要配置白名单
+vim conf/wdk_extend.properties
+配置从何处ip访问到电商网站，当前为宿主机10.188.181.100
+
+
+//wdk.properties中配置的区别
+GCC_eap_pf_cache对应gcc资源目录结构eap_pf_cache
+	GCC_eap_pf_cache
+	module.eap.pf.cache=com.longj.eap.platform.module.cache.mount.CacheStart
+	GCC_eap_cache
+	module.eap.cache=com.longj.eap.platform.module.cache.mount.CacheStart
+
+
+-- 至空exclution.service 服务接口都有eap分组启动提供
+	exclution.service
+	#com.longj.products.cen.api.tc.sal.RequireOrderService
+	#com.longj.products.cen.api.tc.sal.OrderService
+	#com.longj.products.cen.api.tc.sal.PackService
+	#com.longj.products.cen.api.tc.sal.PackOpt
+
+
+
+-- docker 配置镜像
+
+sudo tee /etc/docker/daemon.json <<-'EOF'
+
+{
+
+  "registry-mirrors": ["https://uxk0ognt.mirror.aliyuncs.com"]
+
+}
+
+EOF
+
+
+

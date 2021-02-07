@@ -1,0 +1,31 @@
+-- 查看数据库容量
+SELECT
+	table_schema AS '数据库',
+	table_name AS '表名',
+	table_rows AS '记录数',
+	TRUNCATE (data_length / 1024 / 1024, 2) AS '数据容量(MB)',
+	TRUNCATE (index_length / 1024 / 1024, 2) AS '索引容量(MB)'
+FROM
+	information_schema. TABLES
+WHERE
+	table_schema = 'marketing'
+ORDER BY
+	table_name 
+	data_length DESC,
+	index_length DESC;
+
+SELECT
+	count(1)
+FROM
+	information_schema. TABLES
+WHERE
+	table_schema = 'marketing'
+ORDER BY
+	
+
+	data_length DESC,
+	index_length DESC;
+
+
+-- 查询sql查询时间耗时很长的
+select concat('kill ', id, ';') from information_schema.processlist where Command != 'Sleep' and Time > 300 order by Time desc;

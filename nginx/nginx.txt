@@ -1,0 +1,53 @@
+nginx
+
+1.全局块
+
+2.event块
+
+3.http块
+
+常用命令
+启动
+./nginx
+
+停止
+./nginx -s stop
+
+重新加载 热部署
+./nginx -s reload
+
+重启nginx
+./nginx -s reopen 
+
+转发
+server
+	proxy_pass
+
+一个master 和多worker
+
+好处
+1.可以使用nginx -s reload 热部署
+2.每个worker都是一个独立的进程
+
+需要设置多少个worker
+	worker配置成CPU核数，避免CPU上下文切换
+	worker_process [num]
+
+连接数
+1.一个请求占用worker的几个连接数
+	2或者4 
+	解析：静态资源2，比如访问数据库需要4个
+
+2.nginx有一个master， 有4个worker，每个worker支持的最大连接数据1024，支持的最大并发数？？
+
+即worker能承受的最大连接数
+worker最大支持的连接数 4*1024
+
+则 4*1024/4 or 4*1024/2
+
+总结公式：
+普通的静态访问最大并发数是
+worker_connections * worker_processes/2
+
+如果是http作为反向代理，最大并发数量应该是
+worker_connections * worker_processes/4
